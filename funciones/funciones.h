@@ -402,17 +402,21 @@ CImg<T> binario(CImg<T> imagen, T umbral){
 ///SUMA
 ///****************************************
 //corrimiento=0 si quiero sumar sin corrimiento
-template<typename T>
-CImg<T> sumaImg(CImg<T> img1, CImg<T> img2, T corrimiento=0 ){
-    CImg<T> resultado(img1.width(),img1.height(),1,1);
+CImg<double> sumaImg(CImg<double> img1, CImg<double> img2, double corrimiento=0 ){
+    CImg<double> resultado(img1.width(),img1.height(),1,3);
     cimg_forXY(img1,i,j){
         if((i+corrimiento) >= 0 && (j+corrimiento)>=0){
             resultado(i,j)=(img1(i,j)+ img2(i+corrimiento,j+corrimiento))/2;
         }else
         {
-            resultado(i,j)=(img1(i,j)+ img2(i,j))/2;
+
+            resultado(i,j,0,0)=(img1(i,j,0,0)+ img2(i,j,0,0))/2;
+            resultado(i,j,0,1)=(img1(i,j,0,1)+ img2(i,j,0,1))/2;
+            resultado(i,j,0,2)=(img1(i,j,0,2)+ img2(i,j,0,2))/2;
         }
     }
+    //componer la imagen
+
     return resultado;
 }
 ///****************************************
@@ -461,11 +465,10 @@ CImg<T> division(CImg<T> &img, CImg<T> &masc){
 ///REDUCIR RUIDO //pasar una imagen con ruido en "img",  //genera la suma de "n" imagenes con ruido
 ///****************************************
 //pasar lista de imagenes con ruido
-template<typename T>
-CImg<T> reducRuido(CImgList<T>img){
-    CImg<T> suma(img[0].width(),img[0].height(),1,1,0);
-    for(int i=0;i<img.size();i++)
-        suma=sumaImg(suma,img[i],0); //sumo
+CImg<float> reducRuido(CImgList<float>lista){
+    CImg<float> suma(lista[0].width(),lista[0].height(),1,3,0);
+    for(int i=0;i<lista.size();i++)
+        suma=(suma+lista[i])/2;
     return suma;
 }
 ///****************************************
@@ -1196,18 +1199,7 @@ CImg<T> complemento_color(CImg<T> img){
     return img;
 }
 
-template <class T>
-void ComposeRGB(CImg<T> &img, CImg<T> &r, CImg<T> &g, CImg<T> &b){
-    int ww=r.width(), hh=r.height(), i, j;
-    img.assign(ww, hh, 1, 3);
-    for(i=0; i<ww; i++){
-        for(j=0; j<hh; j++){
-            img(i,j,0,0)=r(i,j);
-            img(i,j,0,1)=g(i,j);
-            img(i,j,0,2)=b(i,j);
-        }
-    }
-}
+
 
 template <class T>
 CImg<T>  ComposeHSI(CImg<T> h, CImg<T> s, CImg<T> I){
@@ -2315,21 +2307,21 @@ CImg<T> splitHough(CImg<T> Hough,double angulo = -180, double row_hough = -1,int
 
 /////  coordenada y al eje, me retorna el valor que correspende la transformada Hough en tita y rho
 //// en grados para tita (t) entre [-90 ; 90] y entre [-sqrt(2)M;sqrt(2)M] el rho (p)
-//template <typename T>
-//double coordenadaXY_a_rho_tita(CImg<T> hough, int coord, unsigned char axis) {
-//    unsigned int M = hough.width();
-//    unsigned int N = hough.height();
-//    // Maximos valores absolutos de theta y de rho
-//    double max_theta = 90;
-//    double max_rho = pow(pow(M, 2.0) + pow(N, 2.0), 0.5);
-//    double valor;
-//    if (axis == 't') { // tita
-//        valor = (2.0 * coord / M - 1.0) * max_theta;
-//    } else if (axis == 'p') { //rho
-//        valor = (2.0 * coord / N - 1.0) * max_rho;
-//    }
-//    return valor;
-//}
+template <typename T>
+double coordenadaXY_a_rho_tita(CImg<T> hough, int coord, unsigned char axis) {
+    unsigned int M = hough.width();
+    unsigned int N = hough.height();
+    // Maximos valores absolutos de theta y de rho
+    double max_theta = 90;
+    double max_rho = pow(pow(M, 2.0) + pow(N, 2.0), 0.5);
+    double valor;
+    if (axis == 't') { // tita
+        valor = (2.0 * coord / M - 1.0) * max_theta;
+    } else if (axis == 'p') { //rho
+        valor = (2.0 * coord / N - 1.0) * max_rho;
+    }
+    return valor;
+}
 
 
 
@@ -2415,7 +2407,7 @@ CImg<bool> segmenta_coord(CImg<bool> img,int x,int y){
 // debe ser menor al umbral que se puso.
 //si no es asi, va retornar una imagen vacia en false.
 // img_cres= InundarInverso(img_nueva, 0.50,297,173 );
-CImg<bool> Inundar( CImg<double> img, double umbral, int x, int y) {
+CImg<bool> Inundar( CImg<double> img, double umbral, int x, int y,int &cant_pixel) {
     img.normalize(0.0, 1.0);
     CImg<bool> mask(img.width(), img.height(), 1, 1, false );
     CImg<bool> procesado(img.width(), img.height(), 1, 1, false );
@@ -2434,21 +2426,25 @@ CImg<bool> Inundar( CImg<double> img, double umbral, int x, int y) {
             if( pix.AdentroImagen() && !procesado(pix.x, pix.y) ) {
                 cola.push_back( pix );
                 procesado(pix.x, pix.y) = true;
+                cant_pixel++;
             }
             pix.x -= 2;
             if( pix.AdentroImagen() && !procesado(pix.x, pix.y) ) {
                 cola.push_back( pix );
                 procesado(pix.x, pix.y) = true;
+                cant_pixel++;
             }
             pix.x++; pix.y++;
             if( pix.AdentroImagen() && !procesado(pix.x, pix.y) ) {
                 cola.push_back( pix );
                 procesado(pix.x, pix.y) = true;
+                cant_pixel++;
             }
             pix.y -= 2;
             if( pix.AdentroImagen() && !procesado(pix.x, pix.y) ) {
                 cola.push_back( pix );
                 procesado(pix.x, pix.y) = true;
+                cant_pixel++;
             }
         }
     }
@@ -2625,7 +2621,7 @@ CImg<bool> ConvexHull(CImg<bool> A,bool blanco=true,bool limitar=false){
     if(!blanco){A=NOTimg(A);}
     if(limitar==false){
         for(int j = 0;j<4;j++){//Avanza sobre los B - SUPUESTAMENTE EL SIZE DE B DEBERIA SER 4 (Cada una de las orientaciones)
-            //Inicializo el vector X para hacer los calculos del B actual
+            //Inicializo el vector X para hacer los calculos del B teactual
             X_Ant=X=A;
             X=HitorMiss(X,B);
             while(X != X_Ant){
@@ -2945,7 +2941,8 @@ CImg<bool> bordes(CImg<bool> img, bool b=true){
         for(int j=1;j<mask.height()-1;j++)
             mask(i,j)=img(i-1,j-1);
     //Inundar inunda zonas true por eso hago NOTimg(mask) ->(por que el borde lo escribi en false, lo invierto a true)
-    mask=Inundar(NOTimg(mask),0.5,0,0);
+    int cant_pixel;
+    mask=Inundar(NOTimg(mask),0.5,0,0,cant_pixel);
     //quito el borde agregado
     mask.crop(1,1,mask.width()-2,mask.height()-2);
     mask = reconstruccion_dilatacion(mask,img);//Reconstruccion es la posta
@@ -3384,15 +3381,20 @@ void get_max_peak(CImg<T> hough, T &theta, T &rho_coord, unsigned int difuminaci
 }
 
 ///****************************************
-/// ROTATE IMAGE. Rota las imagenes en funcion de un angulo
+/// ROTATE IMAGE.
 ///****************************************
-
+//Rota las imagenes en funcion de un angulo que detecta automaticamente y recorta los sobrantes del fondo
+//Recibe la imagen que se desea rotar un umbral para el calculo del sobel que va a entrar en el hough
+//Un umbral para el calculo de la mascara
+//Un limite de giro angular
+//Funciona para imagenes a color y para en escala de grises
 template<class T>
-CImg<T> rotate_image(CImg<T> img,double umbral_sobel,double umbral_mascara,bool color=true){
+CImg<T> rotate_image(CImg<T> img,double umbral_sobel,double umbral_mascara,bool correccion_eje=true,bool color=true){
 
     CImg<T>greyscale;
     CImg<bool> mascara;
     CImg<T> aux_hough,resultado;
+    double tolerancia=2.0;
 
     //Si la imagen es color la hago en escala de grises
     if(color){
@@ -3402,11 +3404,10 @@ CImg<T> rotate_image(CImg<T> img,double umbral_sobel,double umbral_mascara,bool 
         greyscale = img.get_normalize(0,255);
     }
 
-
     //Sobel para deteccion de bordes
     aux_hough = Sobel(greyscale,0)+Sobel(greyscale,1);
     aux_hough.threshold(umbral_sobel);
-    aux_hough.display("sobel");
+    //aux_hough.display("sobel");
 
     // Y ahora aplicamos hough
     aux_hough = hough(aux_hough);
@@ -3419,7 +3420,6 @@ CImg<T> rotate_image(CImg<T> img,double umbral_sobel,double umbral_mascara,bool 
 
     // Ahora que se donde esta el maximo pico, se cual es su inclinacion, por lo que deberia
     // rotarlo hacia 90 o hacia 0, depende cual este mas cerca
-    //std::cout << max_theta << std::endl;
 
     // Si theta es negativo, tomo consideracion especial
     max_theta = (max_theta < 0) ? 180 + max_theta : max_theta;
@@ -3427,29 +3427,33 @@ CImg<T> rotate_image(CImg<T> img,double umbral_sobel,double umbral_mascara,bool 
     // Me va dar 0 (<45), 90 (< 135), 180 (< 225), 270 (<315), o 360
     double degree_to_go = round(max_theta / 90) * 90;
 
-    // Y lo rotamos
-    resultado = img.get_rotate(max_theta - degree_to_go);
+    //Voy a rotar siempre y cuando el angulo que se encuentre el objeto sea mayor a la tolerancia
+    if(max_theta <tolerancia && correccion_eje){
+        //En caso de que no haya necesidad de rotar
+        resultado = img;
+    }
+    else
+    {   // Y lo rotamos
+        resultado = img.get_rotate(max_theta - degree_to_go);
+    }
 
+    //Hago el blur para homogeneizar el objeto y obtener una mejor mascara con el threshold
+    //greyscale.blur(3);
+    //greyscale.display("blur");
 
-    //Hago el blur para homogeneizar el objeto
-    greyscale.blur(3);
-    greyscale.display("blur");
-
-    //calculamos la mascara para la recortar los sobrantes
+    //calculamos la mascara para recortar los sobrantes
     mascara = greyscale.get_threshold(umbral_mascara);
-    mascara = NOTimg(mascara);
 
     //Morfologia - apertura
-    mascara = apertura(mascara,mask(5));
-    mascara=relleno_automatico(mascara);
+    mascara = apertura(mascara,mask(3));
 
-    //roto la mascara
-    mascara.rotate(max_theta - degree_to_go);
-    mascara.display();
+    //roto la mascara segun corresponda. Si hay correccion resp. al eje y ang. theta es<tol, entonces roto.
+    if(max_theta > tolerancia && correccion_eje){
+        mascara.rotate(max_theta - degree_to_go);
+    }
 
     //Recortamos la imagen
     resultado = trim_image(resultado,mascara);
-    //resultado.display("recortada");
 
     return resultado;
 }

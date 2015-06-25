@@ -64,8 +64,8 @@ void forma2(){
 int main()
 {
 
-     forma1();
- //forma2();
+    // forma1();
+ forma2();
 
 
     return 0;

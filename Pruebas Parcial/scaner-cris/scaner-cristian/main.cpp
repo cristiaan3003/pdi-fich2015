@@ -35,11 +35,12 @@ int main()
 
 
             // Para calcular el angulo calculo la transformada de Hough y la multiplico por una imagen para pesar los angulos
-              //giro la imagen de peso un poco.
+              //giro la imagen de peso un poco girada
                     CImg<double> Hough = hough( binarizada );
+                    //degrade : "1 / (1 + 2 * (((x/w)*2)-1) * (((x/w)*2)-1))"
                     CImg<double> peso(Hough.width(),Hough.height(),1,1,"1 / (1 + 2 * (((x/w)*2)-1) * (((x/w)*2)-1))",false);
+                   // peso.display("peso");
                     Hough.mul( peso );
-
                     CImgList<double> lista2( Hough.get_div(peso), peso, Hough, original-InversaHough( Hough, nLineas ) );
                     lista2.display("Calcular angulo - Hough", false);
 
